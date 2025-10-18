@@ -63,12 +63,7 @@ Thumbs.db
 # Core dumps
 core
 core.*
-
-# Documentation files (keep only in repo if needed)
 *.md
-
-# Shell scripts (except those needed)
-*.sh
-
-# Distribution directory
-dist/
+.dist
+.sh
+create-dist.sh
