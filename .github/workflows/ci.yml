@@ -15,33 +15,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Odin
-        shell: powershell
+        shell: cmd
         run: |
-          # Build Odin from source - more reliable than downloading binaries
-          Write-Host "Cloning Odin repository..."
+          echo Cloning Odin repository...
           git clone https://github.com/odin-lang/Odin.git odin_source
           cd odin_source
-
-          Write-Host "Building Odin compiler..."
-          .\build.bat release
-
-          Write-Host "Setting up Odin path..."
-          $odinPath = "$PWD"
-          Write-Host "Adding Odin to PATH: $odinPath"
-          echo $odinPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo Building Odin compiler...
+          call build.bat release
+          echo %CD%>> %GITHUB_PATH%
 
       - name: Verify Odin Installation
-        shell: powershell
+        shell: cmd
         run: |
           cd odin_source
-          .\odin.exe version
+          odin.exe version
 
       - name: Build Windows Binary
-        shell: powershell
-        run: |
-          cd odin_source
-          .\odin.exe build ..\main.odin -file -out:..\organize.exe -o:speed -no-bounds-check
+        shell: cmd
+        run: odin_source\odin.exe build main.odin -file -out:organize.exe -o:speed -no-bounds-check
 
       - name: Upload Windows Binary
         uses: actions/upload-artifact@v4
