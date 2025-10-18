@@ -1,4 +1,5 @@
 name: Build Windows Binary
+# Force refresh: 2025-01-27
 
 on:
   push:
@@ -17,28 +18,22 @@ jobs:
       - name: Install Odin
         shell: powershell
         run: |
-          # Try GitHub releases first, fallback to SourceForge mirror
-          try {
-            $response = Invoke-RestMethod -Uri "https://api.github.com/repos/odin-lang/Odin/releases/latest"
-            $windowsAsset = $response.assets | Where-Object { $_.name -match "odin-windows-amd64.*\.zip" }
-            if ($windowsAsset) {
-              Invoke-WebRequest -Uri $windowsAsset.browser_download_url -OutFile "odin.zip"
-            } else {
-              throw "Windows asset not found in GitHub releases"
-            }
-          } catch {
-            Write-Host "GitHub download failed, trying SourceForge mirror..."
-            Invoke-WebRequest -Uri "https://sourceforge.net/projects/odin.mirror/files/latest/download" -OutFile "odin.zip"
-          }
+          # Download latest Odin from SourceForge mirror
+          Write-Host "Downloading Odin from SourceForge mirror..."
+          Invoke-WebRequest -Uri "https://sourceforge.net/projects/odin.mirror/files/latest/download" -OutFile "odin.zip"
+          Write-Host "Extracting Odin..."
           Expand-Archive -Path "odin.zip" -DestinationPath "odin_temp"
           $odinDir = Get-ChildItem -Path "odin_temp" -Directory | Select-Object -First 1
           if ($odinDir) {
+            Write-Host "Found Odin directory: $($odinDir.Name)"
             Move-Item -Path $odinDir.FullName -Destination "odin_compiler"
           } else {
-            # If no subdirectory, files are directly in odin_temp
+            Write-Host "No subdirectory found, using direct extraction"
             Move-Item -Path "odin_temp" -Destination "odin_compiler"
           }
-          echo "$PWD\odin_compiler" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $odinPath = "$PWD\odin_compiler"
+          Write-Host "Adding Odin to PATH: $odinPath"
+          echo $odinPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify Odin Installation
         shell: powershell
