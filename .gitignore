@@ -63,3 +63,6 @@ Thumbs.db
 # Core dumps
 core
 core.*
+.md
+.dist
+.sh
