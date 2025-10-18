@@ -1,0 +1,65 @@
+# Compiled binaries
+organize
+organize.exe
+organize.bin
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Object files
+*.o
+*.obj
+*.a
+*.lib
+
+# Build directories
+/build/
+/bin/
+/dist/
+
+# Odin specific
+*.odin.tmp
+.odin/
+
+# Distribution packages (these will be built by CI/CD)
+*.tar.gz
+*.zip
+*.deb
+*.rpm
+checksums.txt
+
+# Test files
+/test/
+/tests/
+*.test
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Logs
+*.log
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+*.backup
+
+# Debug files
+*.pdb
+*.dSYM/
+
+# Core dumps
+core
+core.*
