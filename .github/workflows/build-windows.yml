@@ -18,34 +18,30 @@ jobs:
       - name: Install Odin
         shell: powershell
         run: |
-          # Download latest Odin from SourceForge mirror
-          Write-Host "Downloading Odin from SourceForge mirror..."
-          Invoke-WebRequest -Uri "https://sourceforge.net/projects/odin.mirror/files/latest/download" -OutFile "odin.zip"
-          Write-Host "Extracting Odin..."
-          Expand-Archive -Path "odin.zip" -DestinationPath "odin_temp"
-          $odinDir = Get-ChildItem -Path "odin_temp" -Directory | Select-Object -First 1
-          if ($odinDir) {
-            Write-Host "Found Odin directory: $($odinDir.Name)"
-            Move-Item -Path $odinDir.FullName -Destination "odin_compiler"
-          } else {
-            Write-Host "No subdirectory found, using direct extraction"
-            Move-Item -Path "odin_temp" -Destination "odin_compiler"
-          }
-          $odinPath = "$PWD\odin_compiler"
+          # Build Odin from source - more reliable than downloading binaries
+          Write-Host "Cloning Odin repository..."
+          git clone https://github.com/odin-lang/Odin.git odin_source
+          cd odin_source
+
+          Write-Host "Building Odin compiler..."
+          .\build.bat release
+
+          Write-Host "Setting up Odin path..."
+          $odinPath = "$PWD"
           Write-Host "Adding Odin to PATH: $odinPath"
           echo $odinPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify Odin Installation
         shell: powershell
         run: |
-          $env:PATH = "$PWD\odin_compiler;$env:PATH"
-          odin version
+          cd odin_source
+          .\odin.exe version
 
       - name: Build Windows Binary
         shell: powershell
         run: |
-          $env:PATH = "$PWD\odin_compiler;$env:PATH"
-          odin build main.odin -file -out:organize.exe -o:speed -no-bounds-check
+          cd odin_source
+          .\odin.exe build ..\main.odin -file -out:..\organize.exe -o:speed -no-bounds-check
 
       - name: Upload Windows Binary
         uses: actions/upload-artifact@v4
