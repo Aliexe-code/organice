@@ -1,5 +1,5 @@
-name: Build Windows Binary
-# Force refresh: 2025-01-27
+name: CI Build Windows
+# New workflow file to avoid caching issues
 
 on:
   push:
