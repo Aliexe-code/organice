@@ -2,6 +2,8 @@ name: Build Multi-Platform Binaries
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -21,7 +23,6 @@ jobs:
       
       - name: Build Linux Binary
         run: |
-          cd file-organizer
           odin build main.odin -file -out:organize -o:speed -no-bounds-check
           strip organize
       
@@ -29,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: organize-linux-x64
-          path: file-organizer/organize
+          path: organize
 
   build-windows:
     runs-on: windows-latest
@@ -40,20 +41,26 @@ jobs:
         shell: powershell
         run: |
           Invoke-WebRequest -Uri "https://github.com/odin-lang/Odin/releases/latest/download/odin-windows-amd64.zip" -OutFile "odin.zip"
-          Expand-Archive -Path "odin.zip" -DestinationPath "."
-          echo "$PWD" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Expand-Archive -Path "odin.zip" -DestinationPath "odin_compiler"
+          echo "$PWD\odin_compiler" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      
+      - name: Verify Odin Installation
+        shell: powershell
+        run: |
+          $env:PATH = "$PWD\odin_compiler;$env:PATH"
+          odin version
       
       - name: Build Windows Binary
-        shell: cmd
+        shell: powershell
         run: |
-          cd file-organizer
+          $env:PATH = "$PWD\odin_compiler;$env:PATH"
           odin build main.odin -file -out:organize.exe -o:speed -no-bounds-check
       
       - name: Upload Windows Binary
         uses: actions/upload-artifact@v3
         with:
           name: organize-windows-x64
-          path: file-organizer/organize.exe
+          path: organize.exe
 
   build-macos:
     runs-on: macos-latest
@@ -69,7 +76,6 @@ jobs:
       
       - name: Build macOS Binary
         run: |
-          cd file-organizer
           odin build main.odin -file -out:organize -o:speed -no-bounds-check
           strip organize
       
@@ -77,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: organize-macos-x64
-          path: file-organizer/organize
+          path: organize
 
   create-release:
     needs: [build-linux, build-windows, build-macos]
@@ -96,31 +102,29 @@ jobs:
           # Linux package
           mkdir -p linux-package
           cp organize-linux-x64/organize linux-package/
-          cp file-organizer/README.md linux-package/
-          cp file-organizer/INSTALL.md linux-package/
-          cp file-organizer/install.sh linux-package/
-          cp file-organizer/main.odin linux-package/
+          cp README.md linux-package/ || true
+          cp INSTALL.md linux-package/ || true
+          cp install.sh linux-package/ || true
+          cp main.odin linux-package/ || true
           chmod +x linux-package/organize
-          chmod +x linux-package/install.sh
           tar -czf release/file-organizer-linux-x64.tar.gz linux-package/
           
           # Windows package
           mkdir -p windows-package
           cp organize-windows-x64/organize.exe windows-package/
-          cp file-organizer/README.md windows-package/
-          cp file-organizer/INSTALL.md windows-package/
-          cp file-organizer/main.odin windows-package/
+          cp README.md windows-package/ || true
+          cp INSTALL.md windows-package/ || true
+          cp main.odin windows-package/ || true
           zip -r release/file-organizer-windows-x64.zip windows-package/
           
           # macOS package
           mkdir -p macos-package
           cp organize-macos-x64/organize macos-package/
-          cp file-organizer/README.md macos-package/
-          cp file-organizer/INSTALL.md macos-package/
-          cp file-organizer/install.sh macos-package/
-          cp file-organizer/main.odin macos-package/
+          cp README.md macos-package/ || true
+          cp INSTALL.md macos-package/ || true
+          cp install.sh macos-package/ || true
+          cp main.odin macos-package/ || true
           chmod +x macos-package/organize
-          chmod +x macos-package/install.sh
           tar -czf release/file-organizer-macos-x64.tar.gz macos-package/
           
           # Generate checksums
