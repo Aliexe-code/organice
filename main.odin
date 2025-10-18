@@ -18,17 +18,28 @@ File_Info :: struct {
 main :: proc() {
 	if len(os.args) < 2 {
 		print_usage()
+		when ODIN_OS == .Windows {
+			fmt.print("\nPress Enter to exit...")
+			buf: [1]byte
+			os.read(os.stdin, buf[:])
+		}
 		return
 	}
 	dir := os.args[1]
 	dry_run := len(os.args) > 2 && os.args[2] == "--dry-run"
 	if !os.is_dir(dir) {
 		fmt.println("Error : Not a directory.")
+		when ODIN_OS == .Windows {
+			fmt.print("\nPress Enter to exit...")
+			buf: [1]byte
+			os.read(os.stdin, buf[:])
+		}
 		return
 	}
 
 	organize_directory(dir, dry_run)
 }
+
 
 organize_directory :: proc(dir: string, dry_run: bool) {
 	files := list_files(dir)
@@ -130,9 +141,9 @@ categorize :: proc(ext: string) -> string {
 	switch ext_lower {
 	case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp":
 		return "Images"
-	case ".pdf", ".doc", ".docx", ".txt", ".md", ".rtf", ".odt" , ".pptx":
+	case ".pdf", ".doc", ".docx", ".txt", ".md", ".rtf", ".odt", ".pptx":
 		return "Documents"
-	case ".zip", ".tar", ".gz", ".rar", ".7z", ".bz2" , ".jar":
+	case ".zip", ".tar", ".gz", ".rar", ".7z", ".bz2", ".jar":
 		return "Archives"
 	case ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv":
 		return "Videos"

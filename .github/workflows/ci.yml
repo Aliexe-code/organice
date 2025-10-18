@@ -65,8 +65,11 @@ jobs:
           mkdir -p windows-package
           cp organize-windows-x64/organize.exe windows-package/
           cp README.md windows-package/ || true
+          cp README-WINDOWS.md windows-package/ || true
           cp INSTALL.md windows-package/ || true
           cp main.odin windows-package/ || true
+          cp organize.bat windows-package/ || true
+          cp organize.ps1 windows-package/ || true
           zip -r release/file-organizer-windows-x64.zip windows-package/
 
           # Generate checksums
@@ -82,10 +85,21 @@ jobs:
 
             ### Download
 
-            - **Windows**: `file-organizer-windows-x64.zip` - Extract and run `organize.exe`
+            - **Windows**: `file-organizer-windows-x64.zip` - Extract and use one of:
+              - `organize.bat` - Double-click or drag & drop folders onto it
+              - `organize.ps1` - PowerShell script with interactive mode
+              - `organize.exe` - Direct command-line executable
 
             The binary is standalone - no dependencies or installation needed!
 
-            See `README.md` in the package for usage instructions.
+            ### Quick Start (Windows)
+
+            1. Extract the ZIP file
+            2. Either:
+               - Drag a folder onto `organize.bat` to organize it
+               - Right-click `organize.ps1` → "Run with PowerShell" for interactive mode
+               - Open Command Prompt and run: `organize.exe C:\path\to\folder`
+
+            See `README.md` in the package for detailed usage instructions.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
