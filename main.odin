@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
+import "core:crypto/hash"
 import "core:strings"
 
 
@@ -13,6 +14,7 @@ File_Info :: struct {
 	modified_date: string,
 	extension:     string,
 	category:      string,
+	hash:          string,  // For duplicate detection
 }
 
 main :: proc() {
@@ -27,6 +29,7 @@ main :: proc() {
 	}
 	dir := os.args[1]
 	dry_run := len(os.args) > 2 && os.args[2] == "--dry-run"
+	duplicates_only := len(os.args) > 2 && os.args[2] == "--duplicates"
 	if !os.is_dir(dir) {
 		fmt.println("Error : Not a directory.")
 		when ODIN_OS == .Windows {
@@ -37,7 +40,11 @@ main :: proc() {
 		return
 	}
 
-	organize_directory(dir, dry_run)
+	if duplicates_only {
+		find_duplicates(dir)
+	} else {
+		organize_directory(dir, dry_run)
+	}
 }
 
 
@@ -120,6 +127,7 @@ list_files :: proc(dir: string) -> [dynamic]File_Info {
 		full_path := filepath.join({dir, info.name})
 		ext := filepath.ext(info.name)
 
+		hash := compute_file_hash(full_path)
 		file := File_Info {
 			name          = info.name,
 			size          = int(info.size),
@@ -127,12 +135,68 @@ list_files :: proc(dir: string) -> [dynamic]File_Info {
 			path          = full_path,
 			extension     = ext,
 			category      = categorize(ext),
+			hash          = hash,
 		}
 
 		append(&files, file)
 	}
 
 	return files
+}
+
+compute_file_hash :: proc(path: string) -> string {
+	data, ok := os.read_entire_file(path)
+	if !ok {
+		return ""
+	}
+	defer delete(data)
+
+	hash_value := hash.hash_bytes(.SHA256, data)
+	defer delete(hash_value)
+	return fmt.tprintf("%x", hash_value)
+}
+
+find_duplicates :: proc(dir: string) {
+	files := list_files(dir)
+	defer delete(files)
+
+	if len(files) == 0 {
+		fmt.println("No files to check for duplicates.")
+		return
+	}
+
+	hash_map := make(map[string][dynamic]string) // hash -> list of file paths
+	defer {
+		for _, paths in hash_map {
+			delete(paths)
+		}
+		delete(hash_map)
+	}
+
+	for file in files {
+		if file.hash not_in hash_map {
+			hash_map[file.hash] = make([dynamic]string)
+		}
+		append(&hash_map[file.hash], file.path)
+	}
+
+	duplicates_found := 0
+	for hash, paths in hash_map {
+		if len(paths) > 1 {
+			fmt.printf("Duplicate files (hash: %s):\n", hash)
+			for path in paths {
+				fmt.printf("  %s\n", path)
+			}
+			fmt.println()
+			duplicates_found += 1
+		}
+	}
+
+	if duplicates_found == 0 {
+		fmt.println("No duplicate files found.")
+	} else {
+		fmt.printf("Found %d sets of duplicate files.\n", duplicates_found)
+	}
 }
 
 categorize :: proc(ext: string) -> string {
@@ -160,6 +224,11 @@ categorize :: proc(ext: string) -> string {
 
 move_files :: proc(dir: string, categories: map[string][dynamic]File_Info) -> int {
 	moved := 0
+	duplicates := 0
+
+	// Create a map to track hashes for duplicate detection
+	hash_map := make(map[string]string) // hash -> first file path
+	defer delete(hash_map)
 
 	for category, cat_files in categories {
 		folder_path := filepath.join({dir, category})
@@ -171,17 +240,32 @@ move_files :: proc(dir: string, categories: map[string][dynamic]File_Info) -> in
 				fmt.printf("Failed to create folder: %s\n", folder_path)
 				continue
 			}
-
 		}
 
-		// Move files
+		// Move files, handling duplicates
 		for file in cat_files {
 			dest := filepath.join({folder_path, file.name})
 
-			// Handle duplicate names
+			// Check for content duplicates using hash
+			if file.hash in hash_map {
+				fmt.printf("Duplicate found: %s (same as %s)\n", file.name, hash_map[file.hash])
+				duplicates += 1
+				continue
+			}
+			hash_map[file.hash] = file.path
+
+			// Handle name conflicts
 			if os.exists(dest) {
 				base := strings.trim_suffix(file.name, file.extension)
-				dest = filepath.join({folder_path, fmt.tprintf("%s_copy%s", base, file.extension)})
+				counter := 1
+				for {
+					new_dest := filepath.join({folder_path, fmt.tprintf("%s (%d)%s", base, counter, file.extension)})
+					if !os.exists(new_dest) {
+						dest = new_dest
+						break
+					}
+					counter += 1
+				}
 			}
 
 			err := os.rename(file.path, dest)
@@ -193,6 +277,9 @@ move_files :: proc(dir: string, categories: map[string][dynamic]File_Info) -> in
 		}
 	}
 
+	if duplicates > 0 {
+		fmt.printf("\nSkipped %d duplicate files\n", duplicates)
+	}
 	return moved
 }
 
@@ -200,9 +287,17 @@ print_usage :: proc() {
 	fmt.println("📁 File Organizer")
 	fmt.println("═════════════════")
 	fmt.println("Usage:")
-	fmt.println("  organize <directory>- Organize files by category")
+	fmt.println("  organize <directory> - Organize files by category")
 	fmt.println("  organize <directory> --dry-run - Preview without moving files")
+	fmt.println("  organize <directory> --duplicates - Find and show duplicate files")
+	fmt.println("\nFeatures:")
+	fmt.println("  • Automatic categorization by file extension")
+	fmt.println("  • Duplicate file detection using SHA256 hashing")
+	fmt.println("  • Safe duplicate handling (skips identical files)")
+	fmt.println("  • Dry-run mode for previewing changes")
 	fmt.println("\nExample:")
 	fmt.println("  organize ~/Downloads")
 	fmt.println("  organize ~/Desktop --dry-run")
+	fmt.println("  organize ~/Pictures --duplicates")
 }
+
