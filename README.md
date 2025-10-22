@@ -283,18 +283,6 @@ organize ~/Downloads --no-color
 - **🗄️ Archive management**: Find and remove duplicate files to save space
 - **📚 Document organization**: Sort documents by date or category
 
-## 🛠️ Development
-
-### Project Structure
-
-```
-file-organizer/
-├── main.odin           # Main source code
-├── README.md           # This file
-├── LICENSE             # MIT License
-└── organize            # Compiled binary
-```
-
 ### Building
 
 ```bash
@@ -308,67 +296,6 @@ odin build . -out:organize -o:speed
 odin build . -out:organize -o:aggressive -microarch:native
 ```
 
-### Testing
-
-```bash
-# Create test directory
-mkdir test_dir
-cd test_dir
-touch file1.jpg file2.pdf file3.mp3
-
-# Test dry run
-./organize test_dir --dry-run
-
-# Test with stats
-./organize test_dir --dry-run --stats
-
-# Clean up
-rm -rf test_dir
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Here are some ways you can contribute:
-
-1. **Report bugs**: Open an issue describing the bug and how to reproduce it
-2. **Suggest features**: Open an issue with your feature idea
-3. **Submit pull requests**: Fork the repo, make your changes, and submit a PR
-
-### Guidelines
-
-- Follow Odin coding conventions
-- Add tests for new features
-- Update documentation as needed
-- Keep commits atomic and well-described
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [Odin](https://odin-lang.org/) programming language
-- Inspired by various file organization tools
-- Uses SHA256 hashing for reliable duplicate detection
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/file-organizer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/file-organizer/discussions)
-
-## 🗺️ Roadmap
-
-- [ ] Watch mode for automatic organization
-- [ ] Custom configuration files (TOML/YAML)
-- [ ] Smart renaming with metadata extraction
-- [ ] Multi-directory organization
-- [ ] Archive compression for old files
-- [ ] GUI interface
-- [ ] File preview before moving
-- [ ] Regex pattern support
-- [ ] Plugin system
-
----
 
 **Made with ❤️ using Odin**
 
