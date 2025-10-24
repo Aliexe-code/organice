@@ -1,4 +1,4 @@
-# 📁 File Organizer
+# 📁 File Organizer v2.1
 
 A fast, powerful command-line tool for organizing files by category, date, or custom criteria. Written in [Odin](https://odin-lang.org/) for maximum performance and reliability.
 
@@ -7,6 +7,16 @@ A fast, powerful command-line tool for organizing files by category, date, or cu
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Language: Odin](https://img.shields.io/badge/Language-Odin-blue.svg)](https://odin-lang.org/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue)](https://github.com/yourusername/file-organizer/releases)
+
+## 🆕 What's New in v2.1
+
+- ⚙️ **Configuration File Support**: Save your preferences in JSON config files
+- 🎨 **Custom Categorization Rules**: Define your own file categories
+- 📝 **Error Logging**: Log errors to file for debugging and auditing
+- 🔐 **Permission Preservation**: Automatically preserve file permissions during moves
+- 💬 **Verbose Mode**: Detailed output for troubleshooting
+- 🛡️ **Input Validation**: Enhanced security with path sanitization
+- 📚 **Extended File Types**: Support for more file extensions (fonts, config files, etc.)
 
 ## 🌟 Features
 
@@ -26,6 +36,11 @@ A fast, powerful command-line tool for organizing files by category, date, or cu
 - **💬 Interactive Mode**: Confirm each file move individually
 - **🗑️ Duplicate Management**: Delete duplicate files interactively
 - **📈 Progress Bars**: Real-time progress indicators for large operations
+- **⚙️ Configuration Files**: Load settings from JSON configuration files
+- **🎨 Custom Categories**: Define custom categorization rules per extension
+- **📝 Error Logging**: Log all errors to a file for auditing
+- **🔐 Permission Preservation**: Maintain file permissions after moves
+- **💬 Verbose Output**: Detailed logging for debugging and monitoring
 
 ## 📦 Installation
 
@@ -117,6 +132,12 @@ organize <directory> [options]
 | `--exclude <patterns>` | `-e` | Exclude files matching patterns (comma-separated) |
 | `--min-size <size>` | | Minimum file size (e.g., 1MB, 500KB) |
 | `--max-size <size>` | | Maximum file size (e.g., 100MB, 1GB) |
+| `--verbose` | `-v` | Enable verbose output with detailed logging |
+| `--config <file>` | `-c` | Load configuration from JSON file |
+| `--log <file>` | | Log errors to specified file |
+| `--preserve-perms` | | Preserve file permissions (default: enabled) |
+| `--no-preserve-perms` | | Don't preserve file permissions |
+| `--category <ext> <cat>` | | Set custom category for file extension |
 
 ### File Categories
 
@@ -128,10 +149,12 @@ Files are automatically categorized based on their extensions:
 | **Documents** | `.pdf`, `.doc`, `.docx`, `.txt`, `.md`, `.rtf`, `.odt`, `.pptx`, `.xlsx`, `.csv` |
 | **Videos** | `.mp4`, `.avi`, `.mkv`, `.mov`, `.wmv`, `.flv`, `.webm`, `.m4v` |
 | **Audio** | `.mp3`, `.wav`, `.flac`, `.ogg`, `.aac`, `.m4a`, `.wma` |
-| **Code** | `.py`, `.go`, `.rs`, `.c`, `.cpp`, `.h`, `.odin`, `.js`, `.ts`, `.java`, `.cs`, `.rb` |
-| **Archives** | `.zip`, `.tar`, `.gz`, `.rar`, `.7z`, `.bz2`, `.jar`, `.xz` |
-| **Applications** | `.exe`, `.dmg`, `.app`, `.deb`, `.rpm`, `.msi`, `.appimage` |
-| **Disk Images** | `.iso`, `.img`, `.vdi`, `.vmdk` |
+| **Code** | `.py`, `.go`, `.rs`, `.c`, `.cpp`, `.h`, `.odin`, `.js`, `.ts`, `.java`, `.cs`, `.rb`, `.php`, `.swift`, `.kt` |
+| **Archives** | `.zip`, `.tar`, `.gz`, `.rar`, `.7z`, `.bz2`, `.jar`, `.xz`, `.tar.gz`, `.tgz` |
+| **Applications** | `.exe`, `.dmg`, `.app`, `.deb`, `.rpm`, `.msi`, `.appimage`, `.bin` |
+| **Disk Images** | `.iso`, `.img`, `.vdi`, `.vmdk`, `.qcow2` |
+| **Configuration** | `.json`, `.xml`, `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg`, `.conf` |
+| **Fonts** | `.ttf`, `.otf`, `.woff`, `.woff2` |
 | **Other** | All other file types |
 
 ## 💡 Examples
@@ -253,6 +276,80 @@ organize ~/Downloads --undo
 # ✓ Undone 245 operations!
 ```
 
+### Using Configuration Files
+
+```bash
+# Create a config file at ~/.organizer.json
+{
+  "recursive": true,
+  "use_colors": true,
+  "preserve_perms": true,
+  "verbose": false,
+  "exclude_patterns": ["*.tmp", "*.log", "node_modules"],
+  "custom_categories": {
+    "WebAssets": [".tsx", ".jsx", ".scss", ".sass"],
+    "DataFiles": [".csv", ".json", ".xml"]
+  }
+}
+
+# Use the config file
+organize ~/Projects --config ~/.organizer.json
+
+# Output:
+# ✓ Loaded config from: /home/user/.organizer.json
+# Found 320 files in 15 categories...
+```
+
+### Custom Categorization
+
+```bash
+# Organize with custom categories for specific extensions
+organize ~/Code --category .tsx WebCode --category .jsx WebCode
+
+# Multiple custom categories
+organize ~/Files --category .dat Data --category .bin Binary --category .log Logs
+```
+
+### Verbose Mode with Error Logging
+
+```bash
+# Enable verbose output and log errors to file
+organize ~/Downloads --verbose --log ~/organize-errors.log
+
+# Output shows detailed information:
+# ℹ Moved: photo.jpg -> Images
+# ℹ Moved: document.pdf -> Documents
+# ⚠ Failed to preserve permissions for: old_file.txt
+# ℹ Moved: video.mp4 -> Videos
+# ...
+
+# Check error log
+cat ~/organize-errors.log
+# [2025-10-24 21:30:15] move_file | /path/to/file.txt | Failed to move file.txt: Permission denied
+```
+
+### Advanced Workflow
+
+```bash
+# Complete workflow with all features
+organize ~/Downloads \
+  --config ~/.organizer.json \
+  --verbose \
+  --log ~/org-errors.log \
+  --recursive \
+  --exclude '*.tmp,*.log' \
+  --min-size 1KB \
+  --max-size 500MB \
+  --stats \
+  --dry-run
+
+# Review the dry run, then execute
+organize ~/Downloads \
+  --config ~/.organizer.json \
+  --log ~/org-errors.log \
+  --recursive
+```
+
 ## ⚙️ Configuration
 
 ### Operation Log
@@ -274,6 +371,11 @@ organize ~/Downloads --no-color
 3. **Dry Run Mode**: Preview all changes before applying
 4. **Undo Functionality**: Reverse any operation
 5. **Interactive Confirmation**: Manual confirmation before moving files
+6. **Input Validation**: Path sanitization prevents malicious inputs
+7. **Permission Preservation**: Maintains file permissions after moves
+8. **Error Logging**: All errors are logged for auditing and debugging
+9. **Safe File Operations**: Robust error handling for all file operations
+10. **Configuration Validation**: JSON config files are validated before use
 
 ## 🎯 Use Cases
 

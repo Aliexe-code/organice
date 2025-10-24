@@ -32,6 +32,8 @@ checksums.txt
 # Test files
 /test/
 /tests/
+test_dir/
+test_files/
 *.test
 
 # Editor directories and files
@@ -55,6 +57,8 @@ Thumbs.db
 *.tmp
 *.bak
 *.backup
+main.odin.backup
+*.old
 
 # Debug files
 *.pdb
@@ -66,3 +70,6 @@ core.*
 .dist
 .sh
 create-dist.sh
+
+# User configuration
+.file-organizer/

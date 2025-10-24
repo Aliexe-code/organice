@@ -1,5 +1,4 @@
-name: CI Build Windows
-# New workflow file to avoid caching issues
+name: Build and Release
 
 on:
   push:
@@ -7,12 +6,47 @@ on:
       - main
     tags:
       - "v*"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Odin
+        run: |
+          git clone https://github.com/odin-lang/Odin.git
+          cd Odin
+          make release
+          sudo cp odin /usr/local/bin/
+          cd ..
+
+      - name: Verify Odin Installation
+        run: odin version
+
+      - name: Build Linux Binary (Static)
+        run: |
+          odin build . -out:organize -o:speed -no-bounds-check -disable-assert
+          chmod +x organize
+
+      - name: Test Binary
+        run: |
+          ./organize --help
+          echo "✓ Binary works!"
+
+      - name: Upload Linux Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: organize-linux-x64
+          path: organize
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -24,22 +58,27 @@ jobs:
       - name: Install Odin
         shell: cmd
         run: |
-          echo Cloning Odin repository...
-          git clone https://github.com/odin-lang/Odin.git odin_source
-          cd odin_source
-          echo Building Odin compiler...
+          git clone https://github.com/odin-lang/Odin.git
+          cd Odin
           call build.bat release
           echo %CD%>> %GITHUB_PATH%
 
       - name: Verify Odin Installation
         shell: cmd
         run: |
-          cd odin_source
+          cd Odin
           odin.exe version
 
-      - name: Build Windows Binary
+      - name: Build Windows Binary (Static)
         shell: cmd
-        run: odin_source\odin.exe build main.odin -file -out:organize.exe -o:speed -no-bounds-check
+        run: |
+          Odin\odin.exe build . -out:organize.exe -o:speed -no-bounds-check -disable-assert
+
+      - name: Test Binary
+        shell: cmd
+        run: |
+          organize.exe --help
+          echo Binary works!
 
       - name: Upload Windows Binary
         uses: actions/upload-artifact@v4
@@ -48,28 +87,137 @@ jobs:
           path: organize.exe
 
   create-release:
-    needs: [build-windows]
+    needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Windows artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
 
-      - name: Create Release Package
+      - name: Create Release Packages
         run: |
           mkdir -p release
+
+          # Linux package
+          mkdir -p linux-package
+          cp organize-linux-x64/organize linux-package/
+          cp README.md linux-package/
+          cp LICENSE linux-package/
+          echo "#!/bin/bash" > linux-package/install.sh
+          echo "sudo cp organize /usr/local/bin/" >> linux-package/install.sh
+          echo "echo 'File Organizer installed successfully!'" >> linux-package/install.sh
+          chmod +x linux-package/install.sh
+          tar -czf release/file-organizer-linux-x64.tar.gz -C linux-package .
 
           # Windows package
           mkdir -p windows-package
           cp organize-windows-x64/organize.exe windows-package/
-          cp README.md windows-package/ || true
-          cp README-WINDOWS.md windows-package/ || true
-          cp INSTALL.md windows-package/ || true
-          cp main.odin windows-package/ || true
-          cp organize.bat windows-package/ || true
-          cp organize.ps1 windows-package/ || true
+          cp README.md windows-package/
+          cp LICENSE windows-package/
+
+          # Create Windows batch launcher
+          cat > windows-package/organize.bat << 'EOF'
+          @echo off
+          if "%~1"=="" (
+              echo File Organizer v2.0
+              echo.
+              echo Usage: organize.bat [directory] [options]
+              echo   or drag and drop a folder onto this batch file
+              echo.
+              echo Examples:
+              echo   organize.bat C:\Users\%USERNAME%\Downloads
+              echo   organize.bat %USERPROFILE%\Desktop --dry-run
+              echo.
+              pause
+              exit /b
+          )
+          organize.exe %*
+          EOF
+
+          # Create Windows PowerShell script
+          cat > windows-package/organize.ps1 << 'EOF'
+          param(
+              [string]$Directory,
+              [switch]$DryRun,
+              [switch]$Recursive,
+              [switch]$Stats,
+              [switch]$Help
+          )
+
+          if ($Help -or !$Directory) {
+              Write-Host "File Organizer v2.0" -ForegroundColor Cyan
+              Write-Host ""
+              Write-Host "Usage: .\organize.ps1 -Directory <path> [options]"
+              Write-Host ""
+              Write-Host "Options:"
+              Write-Host "  -DryRun       Preview without moving files"
+              Write-Host "  -Recursive    Scan subdirectories"
+              Write-Host "  -Stats        Show detailed statistics"
+              Write-Host ""
+              Write-Host "Examples:"
+              Write-Host "  .\organize.ps1 -Directory C:\Users\$env:USERNAME\Downloads"
+              Write-Host "  .\organize.ps1 -Directory C:\Temp -DryRun -Stats"
+              exit
+          }
+
+          $args = @($Directory)
+          if ($DryRun) { $args += "--dry-run" }
+          if ($Recursive) { $args += "--recursive" }
+          if ($Stats) { $args += "--stats" }
+
+          & ".\organize.exe" @args
+          EOF
+
+          # Create Windows README
+          cat > windows-package/README-WINDOWS.txt << 'EOF'
+          File Organizer v2.0 - Windows Edition
+          ======================================
+
+          QUICK START:
+          ------------
+          1. Method 1: Drag & Drop
+             - Drag a folder onto "organize.bat"
+
+          2. Method 2: Command Prompt
+             - Open Command Prompt in this folder
+             - Run: organize.exe C:\path\to\folder
+
+          3. Method 3: PowerShell (Interactive)
+             - Right-click "organize.ps1" → "Run with PowerShell"
+             - Or: .\organize.ps1 -Directory C:\path\to\folder
+
+          NO INSTALLATION NEEDED!
+          -----------------------
+          This is a standalone executable. No dependencies required.
+          Just extract and run!
+
+          USAGE EXAMPLES:
+          ---------------
+          # Preview changes (no files moved):
+          organize.exe C:\Users\YourName\Downloads --dry-run
+
+          # Organize with statistics:
+          organize.exe C:\Users\YourName\Desktop --stats
+
+          # Recursive organization:
+          organize.exe C:\Users\YourName\Documents --recursive
+
+          # Find duplicates:
+          organize.exe C:\Pictures --duplicates
+
+          For full documentation, see README.md
+
+          TROUBLESHOOTING:
+          ----------------
+          If Windows Defender blocks the file:
+          1. Click "More info"
+          2. Click "Run anyway"
+
+          This is normal for new executables. The program is safe!
+          EOF
+
           zip -r release/file-organizer-windows-x64.zip windows-package/
 
           # Generate checksums
@@ -81,25 +229,57 @@ jobs:
         with:
           files: release/*
           body: |
-            ## File Organizer - Windows Release
+            ## 📁 File Organizer v2.0
 
-            ### Download
+            A fast, standalone file organization tool with no dependencies required!
 
-            - **Windows**: `file-organizer-windows-x64.zip` - Extract and use one of:
-              - `organize.bat` - Double-click or drag & drop folders onto it
-              - `organize.ps1` - PowerShell script with interactive mode
-              - `organize.exe` - Direct command-line executable
+            ### 📥 Downloads
 
-            The binary is standalone - no dependencies or installation needed!
+            | Platform | File | Description |
+            |----------|------|-------------|
+            | 🐧 **Linux** | `file-organizer-linux-x64.tar.gz` | Standalone binary for Linux x64 |
+            | 🪟 **Windows** | `file-organizer-windows-x64.zip` | Standalone executable for Windows x64 |
 
-            ### Quick Start (Windows)
+            ### ✨ Features
 
-            1. Extract the ZIP file
-            2. Either:
-               - Drag a folder onto `organize.bat` to organize it
-               - Right-click `organize.ps1` → "Run with PowerShell" for interactive mode
-               - Open Command Prompt and run: `organize.exe C:\path\to\folder`
+            - ✅ **No installation needed** - Just download and run!
+            - ✅ **No dependencies** - Completely standalone
+            - ✅ Automatic file categorization
+            - ✅ Duplicate detection and removal
+            - ✅ Recursive directory scanning
+            - ✅ Progress indicators and statistics
+            - ✅ Undo functionality
+            - ✅ Interactive mode
 
-            See `README.md` in the package for detailed usage instructions.
+            ### 🚀 Quick Start
+
+            **Linux:**
+            ```bash
+            tar -xzf file-organizer-linux-x64.tar.gz
+            cd linux-package
+            chmod +x organize
+            ./organize ~/Downloads --dry-run
+
+            # Optional: Install system-wide
+            sudo ./install.sh
+            ```
+
+            **Windows:**
+            1. Extract `file-organizer-windows-x64.zip`
+            2. Choose your preferred method:
+               - **Drag & Drop**: Drag a folder onto `organize.bat`
+               - **PowerShell**: Right-click `organize.ps1` → "Run with PowerShell"
+               - **Command Line**: `organize.exe C:\path\to\folder`
+
+            See `README.md` for full documentation.
+
+            ### 🔒 Security Note
+
+            Windows may show a warning for new executables. This is normal.
+            Click "More info" → "Run anyway" to proceed.
+
+            ### 📊 Checksums
+
+            See `checksums.txt` for SHA256 verification.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
